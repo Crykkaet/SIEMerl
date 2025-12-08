@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>SIEMerl Logs</title>
+    <style>
+        body { font-family: Arial; background: #111; color: #0f0; }
+        table { width: 100%; border-collapse: collapse; }
+        td, th { border-bottom: 1px solid #333; padding: 6px; }
+    </style>
+</head>
+<body>
+    <h2>SIEMerl Live Logs</h2>
+    <table id="logTable">
+        <thead>
+            <tr>
+                <th>Zeit</th>
+                <th>Quelle</th>
+                <th>Level</th>
+                <th>Nachricht</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        async function loadLogs() {
+            const res = await fetch("/logs");
+            const data = await res.json();
+
+            const tbody = document.querySelector("#logTable tbody");
+            tbody.innerHTML = "";
+
+            data.forEach(log => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${log.timestamp}</td>
+                    <td>${log.source}</td>
+                    <td>${log.level}</td>
+                    <td>${log.message}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        loadLogs();
+        setInterval(loadLogs, 3000);
+    </script>
+</body>
+</html>

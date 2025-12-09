@@ -9,6 +9,16 @@ SessionLocal = sessionmaker(bind=engine)
 
 Base = declarative_base()
 
+class Client(Base):
+    __tablename__ = "clients"
+
+    id = Column(Integer, primary_key=True, index=True)
+    ip = Column(String(50), unique=True, index=True)
+    name = Column(String(100), nullable=True)
+    mac = Column(String(50), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    last_seen = Column(DateTime, default=datetime.utcnow)
+
 class LogEntry(Base):
     __tablename__ = "logs"
 
@@ -17,6 +27,7 @@ class LogEntry(Base):
     level = Column(String(20))
     message = Column(Text)
     timestamp = Column(DateTime, default=datetime.utcnow)
+    client_ip = Column(String(50), nullable=True)
 
 def init_db():
     Base.metadata.create_all(bind=engine)

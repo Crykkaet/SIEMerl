@@ -1,8 +1,8 @@
 from fastapi import FastAPI
 from fastapi.responses import HTMLResponse
-
 from pydantic import BaseModel
 from db import SessionLocal, LogEntry, init_db
+from typing import Optional
 
 app = FastAPI(title="SIEMerl")
 
@@ -31,9 +31,24 @@ def ingest_log(log: LogIn):
     return {"status": "log stored"}
 
 @app.get("/logs")
-def get_logs():
+def get_logs(
+    level: Optional[str] = None,
+    source: Optional[str] = None,
+    search: Optional[str] = None,
+    limit: int = 100
+):
     db = SessionLocal()
-    logs = db.query(LogEntry).order_by(LogEntry.timestamp.desc()).limit(100).all()
+    query = db.query(LogEntry)
+
+    if level:
+        query = query.filter(LogEntry.level == level)
+    if source:
+        query = query.filter(LogEntry.source == source)
+    if search:
+        like = f"%{search}%"
+        query = query.filter(LogEntry.message.ilike(like))
+
+    logs = query.order_by(LogEntry.timestamp.desc()).limit(limit).all()
     db.close()
 
     return [

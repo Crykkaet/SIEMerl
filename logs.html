@@ -7,7 +7,7 @@
         body { font-family: Arial; background: #111; color: #0f0; }
         h2 { margin-bottom: 10px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        td, th { border-bottom: 1px solid #333; padding: 6px; }
+        td, th { border-bottom: 1px solid #333; padding: 6px; text-align: left; }
         .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
         .controls label { font-size: 0.9rem; }
         .controls input, .controls select { background: #222; color: #0f0; border: 1px solid #333; padding: 4px; }
@@ -52,6 +52,7 @@
             <tr>
                 <th>Zeit</th>
                 <th>Quelle</th>
+                <th>IP-Adresse</th>
                 <th>Level</th>
                 <th>Nachricht</th>
             </tr>
@@ -83,6 +84,7 @@
                 row.innerHTML = `
                     <td>${log.timestamp}</td>
                     <td>${log.source}</td>
+                    <td>${log.client_ip || "–"}</td>
                     <td>${log.level}</td>
                     <td>${log.message}</td>
                 `;

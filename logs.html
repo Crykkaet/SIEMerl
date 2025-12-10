@@ -4,61 +4,98 @@
     <meta charset="UTF-8">
     <title>SIEMerl Logs</title>
     <style>
-        body { font-family: Arial; background: #111; color: #0f0; }
-        h2 { margin-bottom: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        body { font-family: Arial; background: #0d0d0d; color: #cde7d1; margin: 0; padding: 16px; }
+        h2 { margin-bottom: 10px; color: #9df59d; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #111; }
         td, th { border-bottom: 1px solid #333; padding: 6px; text-align: left; }
-        .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        th { color: #9df59d; }
+        .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
         .controls label { font-size: 0.9rem; }
-        .controls input, .controls select { background: #222; color: #0f0; border: 1px solid #333; padding: 4px; }
+        .controls input, .controls select { background: #1a1f1a; color: #cde7d1; border: 1px solid #333; padding: 4px; }
         .controls button { background: #0f0; color: #111; border: none; padding: 4px 10px; cursor: pointer; }
         .controls button:hover { background: #9f9; }
+        .section { margin-bottom: 24px; }
+        .alert-table th { color: #f9d77b; }
+        .alert-table td { color: #f5e5b0; }
+        .log-row.level-INFO { background: #0f2615; color: #c6f3c2; }
+        .log-row.level-WARN { background: #2a1f0c; color: #ffd37f; }
+        .log-row.level-ERROR { background: #2a0f0f; color: #f8b2b2; }
+        .log-row:nth-child(even) { filter: brightness(1.05); }
+        .pill { padding: 2px 6px; border-radius: 6px; font-weight: bold; display: inline-block; }
+        .pill.INFO { background: #1f5b2d; color: #b5f5c1; }
+        .pill.WARN { background: #6a4a14; color: #ffd37f; }
+        .pill.ERROR { background: #7a1f1f; color: #ffd0d0; }
     </style>
 </head>
 <body>
     <h2>SIEMerl Live Logs</h2>
 
-    <div class="controls">
-        <label>
-            Level:
-            <select id="filterLevel">
-                <option value="">(alle)</option>
-                <option value="INFO">INFO</option>
-                <option value="WARN">WARN</option>
-                <option value="ERROR">ERROR</option>
-            </select>
-        </label>
-
-        <label>
-            Source:
-            <input type="text" id="filterSource" placeholder="z.B. udm, test-client">
-        </label>
-
-        <label>
-            Search:
-            <input type="text" id="filterSearch" placeholder="Text in der Nachricht">
-        </label>
-
-        <label>
-            Limit:
-            <input type="number" id="filterLimit" value="100" min="10" max="1000" step="10">
-        </label>
-
-        <button onclick="loadLogs()">Filter anwenden</button>
+    <div class="section">
+        <h3 style="color:#f9d77b; margin:0 0 6px 0;">Aktive Alerts</h3>
+        <table id="alertTable" class="alert-table">
+            <thead>
+                <tr>
+                    <th>Regel</th>
+                    <th>Client IP</th>
+                    <th>Zähler</th>
+                    <th>Last Seen</th>
+                    <th>Beschreibung</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
     </div>
 
-    <table id="logTable">
-        <thead>
-            <tr>
-                <th>Zeit</th>
-                <th>Quelle</th>
-                <th>IP-Adresse</th>
-                <th>Level</th>
-                <th>Nachricht</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+    <div class="section">
+        <div class="controls">
+            <label>
+                Level:
+                <select id="filterLevel">
+                    <option value="">(alle)</option>
+                    <option value="INFO">INFO</option>
+                    <option value="WARN">WARN</option>
+                    <option value="ERROR">ERROR</option>
+                </select>
+            </label>
+
+            <label>
+                Source:
+                <input type="text" id="filterSource" placeholder="z.B. udm, test-client">
+            </label>
+
+            <label>
+                Client IP:
+                <select id="filterClientIp">
+                    <option value="">(alle)</option>
+                </select>
+            </label>
+
+            <label>
+                Search:
+                <input type="text" id="filterSearch" placeholder="Text in der Nachricht">
+            </label>
+
+            <label>
+                Limit:
+                <input type="number" id="filterLimit" value="100" min="10" max="1000" step="10">
+            </label>
+
+            <button onclick="loadLogs()">Filter anwenden</button>
+        </div>
+
+        <table id="logTable">
+            <thead>
+                <tr>
+                    <th>Zeit</th>
+                    <th>Quelle</th>
+                    <th>IP-Adresse</th>
+                    <th>Level</th>
+                    <th>Nachricht</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
 
     <script>
         async function loadLogs() {
@@ -66,11 +103,13 @@
             const source = document.getElementById("filterSource").value.trim();
             const search = document.getElementById("filterSearch").value.trim();
             const limit = document.getElementById("filterLimit").value || 100;
+            const clientIp = document.getElementById("filterClientIp").value;
 
             const params = new URLSearchParams();
             if (level) params.append("level", level);
             if (source) params.append("source", source);
             if (search) params.append("search", search);
+            if (clientIp) params.append("client_ip", clientIp);
             if (limit) params.append("limit", limit);
 
             const res = await fetch("/logs?" + params.toString());
@@ -81,19 +120,63 @@
 
             data.forEach(log => {
                 const row = document.createElement("tr");
+                row.classList.add("log-row", `level-${log.level}`);
                 row.innerHTML = `
                     <td>${log.timestamp}</td>
                     <td>${log.source}</td>
                     <td>${log.client_ip || "–"}</td>
-                    <td>${log.level}</td>
+                    <td><span class="pill ${log.level}">${log.level}</span></td>
                     <td>${log.message}</td>
                 `;
                 tbody.appendChild(row);
             });
         }
 
-        loadLogs();
-        setInterval(loadLogs, 3000);
+        async function loadClientIps() {
+            const res = await fetch("/client_ips");
+            const data = await res.json();
+            const select = document.getElementById("filterClientIp");
+            const current = select.value;
+
+            select.innerHTML = '<option value="">(alle)</option>';
+            data.forEach(item => {
+                const option = document.createElement("option");
+                option.value = item.client_ip;
+                option.textContent = `${item.client_ip} (${item.count})`;
+                select.appendChild(option);
+            });
+
+            // restore selection if still present
+            if ([...select.options].some(opt => opt.value === current)) {
+                select.value = current;
+            }
+        }
+
+        async function loadAlerts() {
+            const res = await fetch("/alerts");
+            const data = await res.json();
+            const tbody = document.querySelector("#alertTable tbody");
+            tbody.innerHTML = "";
+
+            data.forEach(alert => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${alert.rule_name}</td>
+                    <td>${alert.client_ip || "–"}</td>
+                    <td>${alert.count}</td>
+                    <td>${alert.last_seen || "–"}</td>
+                    <td>${alert.description || ""}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        async function refreshData() {
+            await Promise.all([loadClientIps(), loadAlerts(), loadLogs()]);
+        }
+
+        refreshData();
+        setInterval(refreshData, 3000);
     </script>
 </body>
 </html>

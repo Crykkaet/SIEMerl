@@ -29,5 +29,17 @@ class LogEntry(Base):
     timestamp = Column(DateTime, default=datetime.utcnow)
     client_ip = Column(String(50), nullable=True)
 
+
+class Alert(Base):
+    __tablename__ = "alerts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    client_ip = Column(String(50), index=True)
+    rule_name = Column(String(100))
+    description = Column(Text)
+    first_seen = Column(DateTime, default=datetime.utcnow)
+    last_seen = Column(DateTime, default=datetime.utcnow)
+    count = Column(Integer, default=0)
+
 def init_db():
     Base.metadata.create_all(bind=engine)

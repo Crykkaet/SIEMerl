@@ -5,17 +5,54 @@
     <title>SIEMerl Logs</title>
     <style>
         body { font-family: Arial; background: #111; color: #0f0; }
-        table { width: 100%; border-collapse: collapse; }
-        td, th { border-bottom: 1px solid #333; padding: 6px; }
+        h2 { margin-bottom: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        td, th { border-bottom: 1px solid #333; padding: 6px; text-align: left; }
+        .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .controls label { font-size: 0.9rem; }
+        .controls input, .controls select { background: #222; color: #0f0; border: 1px solid #333; padding: 4px; }
+        .controls button { background: #0f0; color: #111; border: none; padding: 4px 10px; cursor: pointer; }
+        .controls button:hover { background: #9f9; }
     </style>
 </head>
 <body>
     <h2>SIEMerl Live Logs</h2>
+
+    <div class="controls">
+        <label>
+            Level:
+            <select id="filterLevel">
+                <option value="">(alle)</option>
+                <option value="INFO">INFO</option>
+                <option value="WARN">WARN</option>
+                <option value="ERROR">ERROR</option>
+            </select>
+        </label>
+
+        <label>
+            Source:
+            <input type="text" id="filterSource" placeholder="z.B. udm, test-client">
+        </label>
+
+        <label>
+            Search:
+            <input type="text" id="filterSearch" placeholder="Text in der Nachricht">
+        </label>
+
+        <label>
+            Limit:
+            <input type="number" id="filterLimit" value="100" min="10" max="1000" step="10">
+        </label>
+
+        <button onclick="loadLogs()">Filter anwenden</button>
+    </div>
+
     <table id="logTable">
         <thead>
             <tr>
                 <th>Zeit</th>
                 <th>Quelle</th>
+                <th>IP-Adresse</th>
                 <th>Level</th>
                 <th>Nachricht</th>
             </tr>
@@ -25,7 +62,18 @@
 
     <script>
         async function loadLogs() {
-            const res = await fetch("/logs");
+            const level = document.getElementById("filterLevel").value;
+            const source = document.getElementById("filterSource").value.trim();
+            const search = document.getElementById("filterSearch").value.trim();
+            const limit = document.getElementById("filterLimit").value || 100;
+
+            const params = new URLSearchParams();
+            if (level) params.append("level", level);
+            if (source) params.append("source", source);
+            if (search) params.append("search", search);
+            if (limit) params.append("limit", limit);
+
+            const res = await fetch("/logs?" + params.toString());
             const data = await res.json();
 
             const tbody = document.querySelector("#logTable tbody");
@@ -36,6 +84,7 @@
                 row.innerHTML = `
                     <td>${log.timestamp}</td>
                     <td>${log.source}</td>
+                    <td>${log.client_ip || "–"}</td>
                     <td>${log.level}</td>
                     <td>${log.message}</td>
                 `;

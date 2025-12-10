@@ -1,0 +1,18 @@
+[Unit]
+Description=SIEMerl Syslog Bridge Service
+After=network.target siemerl.service
+
+[Service]
+# Adjust the WorkingDirectory to the location of your SIEMerl checkout
+WorkingDirectory=/home/USER/siemerl
+
+# Update the ExecStart path to match your Python virtual environment and project path
+ExecStart=/home/USER/siemerl/venv/bin/python /home/USER/siemerl/syslog_bridge.py
+
+# Set the user that should run the service
+User=USER
+
+Restart=always
+
+[Install]
+WantedBy=multi-user.target

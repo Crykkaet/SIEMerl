@@ -1,57 +1,79 @@
 # SIEMerl
 
-SIEMerl is a lightweight SIEM-like log viewer built with FastAPI and SQLite. Logs are ingested as JSON via the `/ingest` endpoint and can be browsed through a simple HTML interface.
+## Inbetriebnahme-Voraussetzungen
+- **Laufzeitumgebung:** Python 3.10 oder höher, `venv`/`pip` und Zugriff auf SQLite (lokale Datei `siem.db`).
+- **Python-Module:** `fastapi`, `uvicorn[standard]`, `sqlalchemy`, `pydantic`, `requests` (Installation siehe unten).
+- **Netzwerk & Firewall:**
+  - TCP-Port **8000** eingehend zulassen (REST-API und Log-Viewer).
+  - UDP-Port **5514** eingehend zulassen, wenn die Syslog Bridge genutzt wird.
+- **Optionale Dienste:** systemd zum Betrieb als Hintergrunddienst.
 
-## Getting Started
-
-1. Create and activate a virtual environment, then install dependencies:
+## Installation und Start in der Umgebung
+1. Virtuelle Umgebung anlegen und Abhängigkeiten installieren:
    ```bash
    python -m venv venv
    source venv/bin/activate
-   pip install -r requirements.txt
+   pip install fastapi "uvicorn[standard]" sqlalchemy pydantic requests
    ```
-2. Run the FastAPI app (for example with `uvicorn`):
+2. FastAPI-Anwendung starten (Beispiel mit `uvicorn`):
    ```bash
-   uvicorn main:app --reload
+   uvicorn main:app --host 0.0.0.0 --port 8000 --reload
    ```
-3. Visit `http://localhost:8000/viewer` to browse logs.
+3. Log-Viewer im Browser öffnen: `http://<host>:8000/viewer`.
 
-## Datenarchivierung
+## Integration als Systemdienst
+### SIEMerl (FastAPI)
+1. Beispielhafte systemd-Unit erstellen `/etc/systemd/system/siemerl.service`:
+   ```ini
+   [Unit]
+   Description=SIEMerl FastAPI Service
+   After=network.target
 
-Um die SQLite-Datenbank schlank zu halten, können Logs, die älter als 30 Tage sind, in CSV-Dateien ausgelagert werden. Dafür steht das Skript `archive.py` bereit.
+   [Service]
+   User=siemerl
+   WorkingDirectory=/opt/siemerl
+   Environment="PATH=/opt/siemerl/venv/bin"
+   ExecStart=/opt/siemerl/venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+   Restart=on-failure
 
-```bash
-python archive.py
-```
+   [Install]
+   WantedBy=multi-user.target
+   ```
+2. Dienst aktivieren und starten:
+   ```bash
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now siemerl.service
+   ```
 
-Das Skript schreibt die exportierten Logs in `Archiv/<Jahr>/<Jahr>-<Monat>.csv` und entfernt sie anschließend aus der Datenbank.
-
-## UDM / Syslog Integration via Syslog Bridge
-
-Syslog-only devices (like the Ubiquiti UDM) can send their UDP syslog streams to SIEMerl through the `syslog_bridge.py` helper. The bridge listens on UDP and forwards received syslog messages to the existing `/ingest` endpoint.
-
-- **Default listen address:** `0.0.0.0`
-- **Default port:** `5514` (UDP)
-- **Forward target:** `http://127.0.0.1:8000/ingest`
-
-### Running with systemd
-
-A systemd service template is provided in `systemd/siemerl-syslog-bridge.service`.
-
-1. Copy the template to `/etc/systemd/system/`:
+### Syslog Bridge
+1. Mitgelieferte Vorlage kopieren:
    ```bash
    sudo cp systemd/siemerl-syslog-bridge.service /etc/systemd/system/
    ```
-2. Edit the unit file to set the correct `User`, `WorkingDirectory`, and `ExecStart` paths for your environment.
-3. Reload systemd and start the bridge:
+2. In der Unit `User`, `WorkingDirectory` und `ExecStart` auf lokale Pfade/Umgebung anpassen.
+3. Dienst laden und starten:
    ```bash
    sudo systemctl daemon-reload
    sudo systemctl enable --now siemerl-syslog-bridge
    ```
 
-### Configuring a UDM
+### Archivierung per Cron oder systemd-timer
+- Das Skript `archive.py` kann regelmäßig ausgeführt werden, z. B. per Cron oder `systemd`-Timer, um alte Logs auszulagern:
+  ```bash
+  /opt/siemerl/venv/bin/python /opt/siemerl/archive.py
+  ```
 
-- **Syslog Server:** `<SIEMerl-IP>`
-- **Port:** `5514` (UDP)
+## Funktionsbeschreibung
+### SIEMerl
+- Leichtgewichtiges Log-Backend mit FastAPI und SQLite.
+- `/ingest` nimmt JSON-Logs entgegen, speichert sie in der SQLite-Datenbank und erzeugt einfache Alerts bei Fehlerspitzen.
+- `/viewer` liefert ein HTML-Frontend zur Ansicht der Logs, weitere Endpunkte liefern Clients, Alerts und gefilterte Logdaten.
 
-Once configured, syslog messages from the UDM (or other devices) will appear in SIEMerl with severity derived from the syslog PRI value and the raw syslog content prefixed by the sender's IP address.
+### Syslog Bridge
+- UDP-Syslog-Empfänger (Standard: `0.0.0.0:5514`), der Nachrichten in das `/ingest`-Endpoint weiterleitet.
+- Liest das PRI-Feld, ordnet daraus ein Log-Level zu und ergänzt den Ursprungs-Client in der Nachricht.
+- Ziel-Endpoint standardmäßig `http://127.0.0.1:8000/ingest`, konfigurierbar über Umgebungsvariablen.
+
+### Archiver
+- Exportiert Log-Einträge, die älter als 30 Tage sind, nach `Archiv/<Jahr>/<Jahr>-<Monat>.csv` und entfernt sie aus der Datenbank.
+- Unterstützt monatliche Gruppierung, schreibt Header bei neuen CSV-Dateien und gibt die Anzahl archivierter Einträge aus.

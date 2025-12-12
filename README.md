@@ -16,6 +16,16 @@ SIEMerl is a lightweight SIEM-like log viewer built with FastAPI and SQLite. Log
    ```
 3. Visit `http://localhost:8000/viewer` to browse logs.
 
+## Datenarchivierung
+
+Um die SQLite-Datenbank schlank zu halten, können Logs, die älter als 30 Tage sind, in CSV-Dateien ausgelagert werden. Dafür steht das Skript `archive.py` bereit.
+
+```bash
+python archive.py
+```
+
+Das Skript schreibt die exportierten Logs in `Archiv/<Jahr>/<Jahr>-<Monat>.csv` und entfernt sie anschließend aus der Datenbank.
+
 ## UDM / Syslog Integration via Syslog Bridge
 
 Syslog-only devices (like the Ubiquiti UDM) can send their UDP syslog streams to SIEMerl through the `syslog_bridge.py` helper. The bridge listens on UDP and forwards received syslog messages to the existing `/ingest` endpoint.

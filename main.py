@@ -64,6 +64,17 @@ class LogIn(BaseModel):
     source: str
     level: str
     message: str
+    client_name: Optional[str] = None
+    client_id: Optional[str] = None
+
+
+class ClientIn(BaseModel):
+    ip: str
+    name: Optional[str] = None
+    mac: Optional[str] = None
+    client_id: Optional[str] = None
+    tags: Optional[str] = None
+    description: Optional[str] = None
 
 @app.get("/")
 def root():
@@ -77,21 +88,35 @@ def ingest_log(log: LogIn, request: Request):
 
     try:
         # Client-Verzeichnis pflegen
-        client = db.query(Client).filter(Client.ip == client_ip).first()
+        client = None
+        if log.client_id:
+            client = db.query(Client).filter(Client.client_id == log.client_id).first()
+
         if client is None:
-            client = Client(
-                ip=client_ip,
-                name=log.source  # als Default nehmen wir erstmal "source"
-            )
-            db.add(client)
-        client.last_seen = datetime.utcnow()
+            client = db.query(Client).filter(
+                Client.ip == client_ip,
+                Client.name == (log.client_name or log.source)
+            ).first()
+
+        if client is None:
+            client = db.query(Client).filter(Client.ip == client_ip).first()
+
+        if client:
+            if log.client_name:
+                client.name = log.client_name
+            if log.client_id:
+                client.client_id = log.client_id
+            client.last_seen = datetime.utcnow()
+            db.commit()
 
         # Log speichern
         entry = LogEntry(
             source=log.source,
             level=log.level,
             message=log.message,
-            client_ip=client_ip
+            client_ip=client_ip,
+            client_name=client.name if client else "N.N.",
+            client_identifier=client.client_id if client and client.client_id else "N.N.",
         )
         db.add(entry)
         db.commit()
@@ -135,6 +160,8 @@ def get_logs(
             "message": log.message,
             "timestamp": log.timestamp.isoformat(),
             "client_ip": log.client_ip,
+            "client_name": log.client_name or "N.N.",
+            "client_id": log.client_identifier or "N.N.",
         }
         for log in logs
     ]
@@ -157,10 +184,64 @@ def get_clients():
             "ip": c.ip,
             "name": c.name,
             "mac": c.mac,
+            "client_id": c.client_id,
+            "tags": c.tags,
+            "description": c.description,
             "created_at": c.created_at.isoformat() if c.created_at else None,
             "last_seen": c.last_seen.isoformat() if c.last_seen else None
         } for c in clients
     ]
+
+
+@app.post("/clients")
+def create_or_update_client(client_in: ClientIn):
+    db = SessionLocal()
+    try:
+        client = None
+        if client_in.client_id:
+            client = db.query(Client).filter(Client.client_id == client_in.client_id).first()
+
+        if client is None:
+            client = db.query(Client).filter(Client.ip == client_in.ip).first()
+
+        if client is None:
+            client = Client(
+                ip=client_in.ip,
+                name=client_in.name,
+                mac=client_in.mac,
+                client_id=client_in.client_id,
+                tags=client_in.tags,
+                description=client_in.description,
+            )
+            db.add(client)
+            db.flush()
+            if not client.client_id:
+                client.client_id = f"C{client.id:05d}"
+        else:
+            client.ip = client_in.ip
+            client.name = client_in.name or client.name
+            client.mac = client_in.mac or client.mac
+            client.client_id = client_in.client_id or client.client_id
+            client.tags = client_in.tags if client_in.tags is not None else client.tags
+            client.description = client_in.description if client_in.description is not None else client.description
+
+        client.last_seen = datetime.utcnow()
+        db.commit()
+        db.refresh(client)
+
+        return {
+            "id": client.id,
+            "ip": client.ip,
+            "name": client.name,
+            "mac": client.mac,
+            "client_id": client.client_id,
+            "tags": client.tags,
+            "description": client.description,
+            "created_at": client.created_at.isoformat() if client.created_at else None,
+            "last_seen": client.last_seen.isoformat() if client.last_seen else None,
+        }
+    finally:
+        db.close()
 
 
 @app.get("/client_ips")
@@ -199,3 +280,9 @@ def get_alerts():
         }
         for alert in alerts
     ]
+
+
+@app.get("/clients_view", response_class=HTMLResponse)
+def clients_view():
+    with open("clients.html") as f:
+        return f.read()

@@ -29,6 +29,9 @@
 </head>
 <body>
     <h2>SIEMerl Live Logs</h2>
+    <div class="controls" style="margin-bottom:16px;">
+        <a href="/clients_view" style="color:#9df59d; text-decoration:none; font-weight:bold;">Clientübersicht öffnen</a>
+    </div>
 
     <div class="section">
         <h3 style="color:#f9d77b; margin:0 0 6px 0;">Aktive Alerts</h3>
@@ -89,6 +92,8 @@
                     <th>Zeit</th>
                     <th>Quelle</th>
                     <th>IP-Adresse</th>
+                    <th>Client Name</th>
+                    <th>Client ID</th>
                     <th>Level</th>
                     <th>Nachricht</th>
                 </tr>
@@ -125,6 +130,8 @@
                     <td>${log.timestamp}</td>
                     <td>${log.source}</td>
                     <td>${log.client_ip || "–"}</td>
+                    <td>${log.client_name || "N.N."}</td>
+                    <td>${log.client_id || "N.N."}</td>
                     <td><span class="pill ${log.level}">${log.level}</span></td>
                     <td>${log.message}</td>
                 `;

@@ -16,6 +16,9 @@ class Client(Base):
     ip = Column(String(50), unique=True, index=True)
     name = Column(String(100), nullable=True)
     mac = Column(String(50), nullable=True)
+    client_id = Column(String(50), unique=True, nullable=True)
+    tags = Column(String(250), nullable=True)
+    description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
     last_seen = Column(DateTime, default=datetime.utcnow)
 
@@ -28,6 +31,8 @@ class LogEntry(Base):
     message = Column(Text)
     timestamp = Column(DateTime, default=datetime.utcnow)
     client_ip = Column(String(50), nullable=True)
+    client_name = Column(String(100), nullable=True)
+    client_identifier = Column(String(50), nullable=True)
 
 
 class Alert(Base):

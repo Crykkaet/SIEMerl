@@ -58,9 +58,47 @@
    ```
 
 ### Archivierung per Cron oder systemd-timer
-- Das Skript `archive.py` kann regelmäßig ausgeführt werden, z. B. per Cron oder `systemd`-Timer, um alte Logs auszulagern:
-  ```bash
-  /opt/siemerl/venv/bin/python /opt/siemerl/archive.py
+- ## Log-Archivierung & Aufbewahrung (Retention)
+
+SIEMerl verwendet eine zeitgesteuerte Archivierung, um die Größe der SQLite-Datenbank zu begrenzen und gleichzeitig eine langfristige Aufbewahrung von Logdaten zu ermöglichen.
+
+### Funktionsweise
+
+- Neue Logeinträge werden in der SQLite-Datenbank (`siem.db`) gespeichert.
+- Logeinträge, die älter als **30 Tage** sind, werden automatisch:
+  1. in **monatliche CSV-Dateien** exportiert  
+     (`Archiv/<Jahr>/<Jahr>-<Monat>.csv`)
+  2. anschließend **aus der Datenbank gelöscht**
+- Die erzeugten CSV-Dateien können langfristig archiviert oder extern gesichert werden.
+
+Dieses Verfahren hält die Datenbank performant, während historische Daten weiterhin verfügbar bleiben.
+
+---
+
+### Automatisierung über systemd Timer
+
+Die Archivierung wird bewusst **nicht im FastAPI-Backend** ausgeführt, sondern über einen separaten systemd-Timer.  
+So bleibt das Backend schlank und frei von Wartungs- oder Batch-Aufgaben.
+
+- **Ausführung:** täglich um **23:45 Uhr**
+- **Service-Typ:** `oneshot`
+- **Scheduler:** systemd timer (`Persistent=true`)
+- **Archiv-Skript:** `archive.py`
+
+#### Verwendete systemd Units
+
+- `siemerl-archive.service`  
+  Führt das Archivierungs-Skript einmalig aus
+
+- `siemerl-archive.timer`  
+  Startet den Service zeitgesteuert
+
+#### Status und Logs prüfen
+
+```bash
+systemctl list-timers | grep siemerl
+journalctl -u siemerl-archive.service
+
   ```
 
 ## Funktionsbeschreibung

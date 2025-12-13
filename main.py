@@ -184,7 +184,6 @@ def viewer():
     with open("logs.html") as f:
         return f.read()
 
-@app.get("/clients")
 @app.get("/api/clients")
 def get_clients():
     db = SessionLocal()
@@ -206,7 +205,7 @@ def get_clients():
     ]
 
 
-@app.post("/clients")
+@app.post("/api/clients")
 def create_or_update_client(client_in: ClientIn):
     db = SessionLocal()
     try:
@@ -298,6 +297,7 @@ def get_alerts():
     ]
 
 
+@app.get("/clients", response_class=HTMLResponse)
 @app.get("/clients.html", response_class=HTMLResponse)
 def clients_view():
     return FileResponse("clients.html", media_type="text/html")

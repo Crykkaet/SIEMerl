@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 from db import SessionLocal, LogEntry, Client, Alert, init_db
 from typing import Optional
@@ -185,6 +185,7 @@ def viewer():
         return f.read()
 
 @app.get("/clients")
+@app.get("/api/clients")
 def get_clients():
     db = SessionLocal()
     clients = db.query(Client).order_by(Client.ip).all()
@@ -297,7 +298,6 @@ def get_alerts():
     ]
 
 
-@app.get("/clients_view", response_class=HTMLResponse)
+@app.get("/clients.html", response_class=HTMLResponse)
 def clients_view():
-    with open("clients.html") as f:
-        return f.read()
+    return FileResponse("clients.html", media_type="text/html")

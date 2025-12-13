@@ -1,4 +1,4 @@
-from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text
+from sqlalchemy import create_engine, Column, Integer, String, DateTime, Text, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 from datetime import datetime
 
@@ -48,3 +48,29 @@ class Alert(Base):
 
 def init_db():
     Base.metadata.create_all(bind=engine)
+    _upgrade_schema()
+
+
+def _column_exists(conn, table: str, column: str) -> bool:
+    result = conn.execute(text(f"PRAGMA table_info({table})"))
+    return any(row[1] == column for row in result)
+
+
+def _ensure_column(conn, table: str, column: str, definition: str) -> None:
+    if not _column_exists(conn, table, column):
+        conn.execute(text(f"ALTER TABLE {table} ADD COLUMN {definition}"))
+
+
+def _upgrade_schema():
+    if engine.dialect.name != "sqlite":
+        return
+
+    with engine.connect() as conn:
+        _ensure_column(conn, "clients", "client_id", "VARCHAR(50)")
+        _ensure_column(conn, "clients", "tags", "VARCHAR(250)")
+        _ensure_column(conn, "clients", "description", "TEXT")
+        _ensure_column(conn, "clients", "created_at", "DATETIME")
+        _ensure_column(conn, "clients", "last_seen", "DATETIME")
+
+        _ensure_column(conn, "logs", "client_name", "VARCHAR(100)")
+        _ensure_column(conn, "logs", "client_identifier", "VARCHAR(50)")

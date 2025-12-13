@@ -101,6 +101,18 @@ def ingest_log(log: LogIn, request: Request):
         if client is None:
             client = db.query(Client).filter(Client.ip == client_ip).first()
 
+        if client is None:
+            client = Client(
+                ip=client_ip,
+                name=log.client_name or log.source or "N.N.",
+                client_id=log.client_id,
+                last_seen=datetime.utcnow(),
+            )
+            db.add(client)
+            db.flush()
+            if not client.client_id:
+                client.client_id = f"C{client.id:05d}"
+
         if client:
             if log.client_name:
                 client.name = log.client_name
@@ -219,11 +231,14 @@ def create_or_update_client(client_in: ClientIn):
                 client.client_id = f"C{client.id:05d}"
         else:
             client.ip = client_in.ip
-            client.name = client_in.name or client.name
+            client.name = client_in.name or client.name or "N.N."
             client.mac = client_in.mac or client.mac
             client.client_id = client_in.client_id or client.client_id
             client.tags = client_in.tags if client_in.tags is not None else client.tags
             client.description = client_in.description if client_in.description is not None else client.description
+
+        if not client.client_id:
+            client.client_id = f"C{client.id:05d}" if client.id else None
 
         client.last_seen = datetime.utcnow()
         db.commit()

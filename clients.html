@@ -37,7 +37,7 @@
 
     <script>
         async function loadClients() {
-            const res = await fetch('/api/clients');
+            const res = await fetch('/clients');
             const data = await res.json();
             const tbody = document.querySelector('#clientTable tbody');
             tbody.innerHTML = '';

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>SIEMerl Clients</title>
+    <style>
+        body { font-family: Arial; background: #0d0d0d; color: #cde7d1; margin: 0; padding: 16px; }
+        h2 { margin-bottom: 10px; color: #9df59d; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #111; }
+        td, th { border-bottom: 1px solid #333; padding: 6px; text-align: left; }
+        th { color: #9df59d; }
+        .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+        .controls a { color: #9df59d; text-decoration: none; font-weight: bold; }
+        .pill { padding: 2px 6px; border-radius: 6px; font-weight: bold; display: inline-block; background: #1f5b2d; color: #b5f5c1; }
+    </style>
+</head>
+<body>
+    <h2>Clientübersicht</h2>
+    <div class="controls">
+        <a href="/viewer">Zurück zum Live-Log Viewer</a>
+    </div>
+
+    <table id="clientTable">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Client ID</th>
+                <th>IP</th>
+                <th>Tags</th>
+                <th>Beschreibung</th>
+                <th>Created</th>
+                <th>Last Seen</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
+
+    <script>
+        async function loadClients() {
+            const res = await fetch('/clients');
+            const data = await res.json();
+            const tbody = document.querySelector('#clientTable tbody');
+            tbody.innerHTML = '';
+
+            data.forEach(client => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${client.name || 'N.N.'}</td>
+                    <td>${client.client_id || 'N.N.'}</td>
+                    <td>${client.ip || '–'}</td>
+                    <td>${client.tags || ''}</td>
+                    <td>${client.description || ''}</td>
+                    <td>${client.created_at || '–'}</td>
+                    <td>${client.last_seen || '–'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        loadClients();
+        setInterval(loadClients, 5000);
+    </script>
+</body>
+</html>
